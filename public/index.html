@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    
+
+    <link rel="stylesheet" href="../src/styles/global_styles.css">
+    <link rel="stylesheet" href="../src/styles/index_styles.css">
+
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap" >
+</head>
+
+<header>
+    <label>MathStatistics project</label>
+</header>
+<body>
+    <section class="page-content">
+        <div>
+            <label>Select data template</label>
+
+            <label class="input-file">
+                <input type="file" id="filePicker" name="file" onchange="dataChanged(this.value)" accept="text/csv">
+                <span class="no-select">pick .csv file</span>
+            </label>
+
+                <label>or paste URL</label>
+                <input id="dataURL" type="url" oninput="dataChanged(this.value)" placeholder=".csv URL">
+
+        </div>
+        
+        <div id="open_file_section" class="page-content display-none">
+            <div >
+                <img src="../src/images/teacher_image_1.jpg" class="home-image" alt="" srcset="">
+            </div>
+            <button onclick="openFile()">Open</button>
+        </div>
+
+        <section id="data_content" class="page-content display-none">
+            <div>
+                <label>select CSV Headers</label>
+            </div>
+            
+            <ul id="csv-headers-list" class="csv-headers-list">
+            </ul>
+            <button onclick="getSelectedColumns(); drawInfo();">Generate charts</button>
+            <div id="plot" style="width:100%;height:70%;"></div>
+            <div id="hist" style="width:100%;height:70%;"></div>
+            <div id="lreg" style="width:100%;height:70%;"></div>
+
+            <div id="data"></div>
+        </section>
+
+        <section id="other_info" class="page-content">
+            
+        </section>
+
+        <section id="data_content" class="page-content">
+            <div>
+                <label>select one numeric Column</label>
+            </div>
+            
+            <select id="csv-headers-list-hypo" class="csv-headers-list">
+            </select>
+            <div style="display: flex;">
+
+                <input type="number" id="hypo_value">
+                
+                <button id="hypo_check_button">Check hypothesis</button>
+                <label id="hypo_result"></label>
+            </div>
+        </section>
+        <script>
+            function drawInfo(){
+                let container = document.getElementById('other_info');
+                container.innerHTML = null;
+                let localdata = JSON.parse(window.localStorage.getItem('selectedData'));
+            
+                localdata.forEach(element => {
+                    let stats = new Statistics(element);
+                    let indexDisp = stats.indexOfDispersion(element.data);
+                    
+                    container.innerText += `\nDispertion of '${element.name}' = ${indexDisp}`;
+                });
+            if(localdata.length >= 2){
+                let bodyMeasurements = [];
+
+                let length = Math.min(localdata[0].data.length,localdata[1].data.length);
+                
+                for(let i = 0; i < length-1; i++){
+
+                    if(isNaN(localdata[0].data[i]) || isNaN(localdata[1].data[i])){
+                        continue;
+                    }
+                    bodyMeasurements.push(
+                        {
+                            param_1: localdata[0].data[i],
+                            param_2: localdata[1].data[i]
+                        }
+                    )
+                    
+                }
+                
+                //console.log(bodyMeasurements);
+
+                let bodyVars = {
+                    param_1: 'metric',
+                    param_2: 'metric'
+                };
+                
+                let corstats = new Statistics(bodyMeasurements, bodyVars);
+                let r = corstats.correlationCoefficient('param_1', 'param_2');
+                
+
+                //console.log(r.correlationCoefficient);
+
+                let lregression = findLineByLeastSquares(localdata[0].data, localdata[1].data);
+                container.innerText += `\nCorelation of ${localdata[0].name} and ${localdata[1].name} = ${isNaN(r.correlationCoefficient)? '~1' : r.correlationCoefficient}`;
+                //container.innerText += `\nLinear regression of ${localdata[0].name} = ${lregression[0]} and ${localdata[1].name} = ${lregression[1]}`;
+                
+                
+            }
+            
+            
+                   
+            }
+            function findLineByLeastSquares(values_x, values_y) {
+    let sum_x = 0;
+    let sum_y = 0;
+    let sum_xy = 0;
+    let sum_xx = 0;
+    let count = 0;
+
+    /*
+     * We'll use those variables for faster read/write access.
+     */
+    let x = 0;
+    let y = 0;
+    let values_length = values_x.length;
+
+    if (values_length != values_y.length) {
+        throw new Error('The parameters values_x and values_y need to have same size!');
+    }
+
+    /*
+     * Nothing to do.
+     */
+    if (values_length === 0) {
+        return [ [], [] ];
+    }
+
+    /*
+     * Calculate the sum for each of the parts necessary.
+     */
+    for (let v = 0; v < values_length; v++) {
+        x = values_x[v];
+        y = values_y[v];
+        sum_x += x;
+        sum_y += y;
+        sum_xx += x*x;
+        sum_xy += x*y;
+        count++;
+    }
+
+    /*
+     * Calculate m and b for the formular:
+     * y = x * m + b
+     */
+    let m = (count*sum_xy - sum_x*sum_y) / (count*sum_xx - sum_x*sum_x);
+    let b = (sum_y/count) - (m*sum_x)/count;
+
+    /*
+     * We will make the x and y result line now
+     */
+    let result_values_x = [];
+    let result_values_y = [];
+
+    for (let v = 0; v < values_length; v++) {
+        x = values_x[v];
+        y = x * m + b;
+        result_values_x.push(x);
+        result_values_y.push(y);
+    }
+
+    return [result_values_x, result_values_y];
+}
+        </script>
+    </section>
+</body>
+
+<!-- <footer>
+    <label>footer</label>
+</footer> -->
+</html>
+
+
+
+<script>
+
+
+    // let y0 = [];
+    // let y1 = [];
+    // for (let i = 0; i < 50; i ++) {
+    //     y0[i] = Math.random();
+    //     y1[i] = Math.random() + 1;
+    // }
+    //
+    // let trace1 = {
+    //     y: y0,
+    //     type: 'box'
+    // };
+    //
+    // let trace2 = {
+    //     y: y1,
+    //     type: 'box'
+    // };
+    //
+    // let data = [trace1, trace2];
+    //
+    //
+    // Plotly.newPlot('plot', data);
+
+</script>
+
+<script src="../scripts/UI/index.js"></script>
+    <script src="../scripts/datawork.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+    <script src="../jquery-csv-main/src/jquery.csv.js"></script>
+    <script src="../scripts/statistics/statistics.js" type="text/javascript"></script>
